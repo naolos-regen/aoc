@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include "../inc/day01.h"
 
 using namespace std;
 #define MAX   100
@@ -10,7 +11,7 @@ using namespace std;
 #define START 50
 
 vector<pair<int, char>>
-part01_parse(vector<string> in)
+day01_parse(vector<string> in)
 {
         vector<pair<int, char>> out;
 
@@ -98,7 +99,6 @@ read_file_to_single_line(const std::string& filename)
 
         string line;
         vector<string> result;
-        bool first_line = true;
 
         while (getline(file, line))
         {
@@ -108,16 +108,14 @@ read_file_to_single_line(const std::string& filename)
         return (result);
 }
 
-int
-main(int argc, char* argv[])
+extern "C" void 
+day01(const char *fp)
 {
-        if (argc == 1)
-                return (1);
-        vector<string> args = parse_args(argc, argv);
+        cout << "hello\n";
         try
         {
-                vector<string> file_contents = read_file_to_single_line(args[1]);
-                vector<pair<int, char>> mapped = part01_parse(file_contents);
+                vector<string> file_content = read_file_to_single_line(fp);
+                vector<pair<int, char>> mapped = day01_parse(file_content);
                 int result_part1 = part01_solve(mapped);
                 int result_part2 = part02_solve(mapped);
                 cout << result_part1 << endl;
@@ -125,8 +123,6 @@ main(int argc, char* argv[])
         }
         catch (const std::exception& e)
         {
-                cerr << "Error: " << e.what() << endl;
-                return (1);
+                return;       
         }
-        return (0);
 }
