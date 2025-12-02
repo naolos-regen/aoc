@@ -5,7 +5,6 @@
 #include <sstream>
 #include <algorithm>
 #include <stdexcept>
-#include <numeric>
 #include "../inc/day02.h"
 
 using namespace std;
@@ -32,7 +31,7 @@ is_invalid_ID_inf_repeats(const string & id)
         for (size_t seq_len = 1; seq_len <= len / 2; ++seq_len)
         {
                 if (len % seq_len == 0 &&
-                                std::equal(id.begin() + seq_len, id.end(), id.begin()))
+                                equal(id.begin() + seq_len, id.end(), id.begin()))
                         return (true);
 
         }
@@ -40,10 +39,15 @@ is_invalid_ID_inf_repeats(const string & id)
         return (false);
 }
 
-static vector<size_t>
-solve_part_01(const vector<pair<string, string>> * in)
+static pair<size_t, size_t>
+solve_part_01(
+        const vector<pair<string, string>> * in,
+        bool (*is_invalid_ID_p1) (const string & id),
+        bool (*is_invalid_ID_p2) (const string & id)
+)
 {
-        vector<size_t> invalid_IDs;
+        size_t invalid_p1 = 0;
+        size_t invalid_p2 = 0;
 
         for (const auto& [first_ID, last_ID] : *in)
         {
@@ -54,35 +58,14 @@ solve_part_01(const vector<pair<string, string>> * in)
                 {
                         string id_str = to_string(id);
 
-                        if (is_invalid_ID(id_str))
-                                invalid_IDs.push_back(id);
+                        if (is_invalid_ID_p1(id_str))
+                                invalid_p1 += id;       
+                        if (is_invalid_ID_p2(id_str))
+                                invalid_p2 += id;
                 }
         }
 
-        return (invalid_IDs);
-}
-
-static vector<size_t>
-solve_part_02(const vector<pair<string, string>> * in)
-{
-        vector<size_t> invalid_IDs;
-
-        for (const auto& [first_ID, last_ID] : *in)
-        {
-                size_t start = stoull(first_ID);
-                size_t end   = stoull(last_ID);
-
-                for (size_t id = start; id <= end; ++id)
-                {
-                        string id_str = to_string(id);
-
-                        if (is_invalid_ID_inf_repeats(id_str))
-                                invalid_IDs.push_back(id);
-                }
-
-        }
-
-        return (invalid_IDs);
+        return (make_pair(invalid_p1, invalid_p2));
 }
 
 static vector<pair<string, string>>
@@ -129,7 +112,7 @@ split_ranges(const string& input)
 }
 
 static vector<string>
-read_file_to_single_line(const std::string& filename)
+read_file_to_single_line(const string& filename)
 {
         ifstream file(filename);
         if (!file.is_open())
@@ -150,12 +133,9 @@ day02(const char* fp)
         {
                 vector<string> fileString = read_file_to_single_line(fp);
                 vector<pair<string, string>> first_last_ID = parse_to_pair(fileString);
-                vector<size_t> invalid_IDs_p1 = solve_part_01(&first_last_ID);
-                vector<size_t> invalid_IDs_p2 = solve_part_02(&first_last_ID);
-                size_t sum_p1 = std::accumulate(invalid_IDs_p1.begin(), invalid_IDs_p1.end(), (size_t)0);
-                size_t sum_p2 = std::accumulate(invalid_IDs_p2.begin(), invalid_IDs_p2.end(), (size_t) 0);
-                cout << "Day 02 Part 01: " << sum_p1 << endl;
-                cout << "Day 02 Part 02: " << sum_p2 << endl;
+                pair<size_t, size_t> sum = solve_part_01(&first_last_ID, is_invalid_ID, is_invalid_ID_inf_repeats);
+                cout << "Day 02 Part 01: " << sum.first << endl;
+                cout << "Day 02 Part 02: " << sum.second << endl;
         }
         catch (const std::exception & ex)
         {
