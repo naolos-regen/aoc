@@ -40,7 +40,7 @@ is_invalid_ID_inf_repeats(const string & id)
 }
 
 static pair<size_t, size_t>
-solve_part_01(
+solve_parts(
         const vector<pair<string, string>> * in,
         bool (*is_invalid_ID_p1) (const string & id),
         bool (*is_invalid_ID_p2) (const string & id)
@@ -133,7 +133,7 @@ day02(const char* fp)
         {
                 vector<string> fileString = read_file_to_single_line(fp);
                 vector<pair<string, string>> first_last_ID = parse_to_pair(fileString);
-                pair<size_t, size_t> sum = solve_part_01(&first_last_ID, is_invalid_ID, is_invalid_ID_inf_repeats);
+                pair<size_t, size_t> sum = solve_parts(&first_last_ID, is_invalid_ID, is_invalid_ID_inf_repeats);
                 cout << "Day 02 Part 01: " << sum.first << endl;
                 cout << "Day 02 Part 02: " << sum.second << endl;
         }
