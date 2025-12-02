@@ -10,7 +10,7 @@ using namespace std;
 #define MIN   0
 #define START 50
 
-vector<pair<int, char>>
+static vector<pair<int, char>>
 day01_parse(vector<string> in)
 {
         vector<pair<int, char>> out;
@@ -25,7 +25,7 @@ day01_parse(vector<string> in)
         return (out);
 }
 
-int
+static int
 part01_solve(const vector<pair<int, char>>& in)
 {
         int dial = START;
@@ -43,7 +43,7 @@ part01_solve(const vector<pair<int, char>>& in)
         return (result);
 }
 
-int
+static int
 part02_solve(const vector<pair<int, char>>& in)
 {
         int dial = START;
@@ -79,7 +79,7 @@ part02_solve(const vector<pair<int, char>>& in)
         return result;
 }
 
-vector<string>
+static vector<string>
 parse_args(int argc, char* argv[])
 {
         vector<string> args(argc);
@@ -90,7 +90,7 @@ parse_args(int argc, char* argv[])
         return (args);
 }
 
-vector<string>
+static vector<string>
 read_file_to_single_line(const std::string& filename)
 {
         ifstream file(filename);
@@ -118,8 +118,9 @@ day01(const char *fp)
                 vector<pair<int, char>> mapped = day01_parse(file_content);
                 int result_part1 = part01_solve(mapped);
                 int result_part2 = part02_solve(mapped);
-                cout << result_part1 << endl;
-                cout << result_part2 << endl;
+                cout << "Day 01 Part 01: " << result_part1 << endl;
+                cout << "Day 01 Part 02: " << result_part2 << endl;
+                
         }
         catch (const std::exception& e)
         {
