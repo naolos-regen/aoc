@@ -16,7 +16,7 @@ find_max_joltage(const char* bank_selection, unsigned int digit_amount)
         if (digit_amount == 0 || digit_amount >= n)
                 return (uint_fast64_t)-1;
 
-        char* st = (char *) malloc(n + 1);
+        char* st = (char*) malloc(n + 1);
         if (!st) return (uint_fast64_t)-1;
 
         size_t top = 0;
@@ -75,11 +75,14 @@ read_file_to_single_line(const char* fp)
         while (getline(&line, &n, file) != -1)
         {
                 size_t len = strlen(line);
-                if (len > 0 && line[len - 1] == '\n') 
+                if (len > 0 && line[len - 1] == '\n')
                         line[len - 1] = '\0';
 
-                char** tmp = (char **) realloc(lines, sizeof(char*) * (count + 2));
-                if (!tmp) { return (NULL); /* handle error */ }
+                char** tmp = (char**) realloc(lines, sizeof(char*) * (count + 2));
+                if (!tmp)
+                {
+                        return (NULL); 
+                }
 
                 lines = tmp;
                 lines[count++] = line;
