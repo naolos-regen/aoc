@@ -1,8 +1,8 @@
 #include "../inc/day04.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #define ADJACEMENTS_LEN 8
 
@@ -56,8 +56,8 @@ get_pos2_at(int32_t index)
 static char
 get_data_from(t_pos2 pos2)
 {
-        if (pos2.row < 0 || pos2.row >= pattern->col_length ||
-                        pos2.col < 0 || pos2.col >= pattern->row_length)
+        if (pos2.row < 0 || pos2.row >= pattern->row_length||
+                        pos2.col < 0 || pos2.col >= pattern->col_length)
         {
                 return '.';
         }
@@ -72,8 +72,8 @@ get_data_from(t_pos2 pos2)
 static void
 set_data_at(t_pos2 pos2, char c)
 {
-        if (pos2.row < 0 || pos2.row >= pattern->col_length ||
-                        pos2.col < 0 || pos2.col >= pattern->row_length)
+        if (pos2.row < 0 || pos2.row >= pattern->row_length ||
+                        pos2.col < 0 || pos2.col >= pattern->col_length)
         {
                 return;
         }
@@ -100,6 +100,9 @@ set_all_adjacements()
 // *INDENT-ON*
 }
 
+#define FOR(i, imax)\
+        for (i = 0; i < (imax); i++)
+
 static int32_t
 get_all_matching_neighbours(t_pos2 index, char match)
 {
@@ -108,7 +111,8 @@ get_all_matching_neighbours(t_pos2 index, char match)
         if (index_char == '.')
                 return (0);
 
-        for (int i = 0; i < ADJACEMENTS_LEN; i++)
+        int i;
+        FOR(i, ADJACEMENTS_LEN)
         {
                 t_pos2 position =
                 {
@@ -124,6 +128,135 @@ get_all_matching_neighbours(t_pos2 index, char match)
         }
         return (result);
 }
+
+static void
+step(t_pos2 index, int32_t* result)
+{
+        char current_char = get_data_from(index);
+        if (current_char == '@')
+        {
+                int32_t neighbours = get_all_matching_neighbours(index, '@');
+                if (neighbours < 4)
+                {
+                        (*result)++;
+                }
+        }
+}
+
+static void
+x_die(t_pos2 index)
+{
+        char current_char = get_data_from(index);
+        if (current_char == 'x')
+                set_data_at(index, '.');
+}
+
+static void
+die(t_pos2 index)
+{
+        char current_char = get_data_from(index);
+        if (current_char == '@')
+        {
+                int32_t neighbours = get_all_matching_neighbours(index, '@');
+                if (neighbours < 4)
+                {
+                        set_data_at(index, 'x');
+                }
+        }
+}
+
+#define DOUBLE_FOR(i, imax, j, jmax) \
+                for (i = 0; i < (imax); i++) \
+                        for (int j = 0; j < (jmax); j++)
+
+
+static void
+print_pattern(int32_t frame)
+{
+        int scale = 15;
+        char buf[256];
+        snprintf(buf, sizeof(buf), "vid/output-%09d.ppm", frame);
+        FILE *f = fopen(buf,"wb");
+        if (!f)
+        {
+                perror("fopen");
+                return;
+        }
+
+        int width  = pattern->col_length * scale;
+        int height = pattern->row_length * scale;
+
+        fprintf(f, "P6\n%d %d\n255\n", width, height);
+
+        for (int row = 0; row < pattern->row_length; row++)
+        {
+                for (int srow = 0; srow < scale; srow++)
+                {
+                        for (int col = 0; col < pattern->col_length; col++)
+                        {
+                                t_pos2 pos = { .row = row, .col = col };
+                                char c = get_data_from(pos);
+                                unsigned char rgb[3];
+
+                                if (c == '@')
+                                {
+                                        rgb[0]=0xd0;
+                                        rgb[1]=0xb8;
+                                        rgb[2]=0x92;
+                                }
+                                else if (c == '.')
+                                {
+                                        rgb[0]=0x06;
+                                        rgb[1]=0x26;
+                                        rgb[2]=0x25;
+                                }
+                                else
+                                {
+                                        rgb[0]=0x54;
+                                        rgb[1]=0x49;
+                                        rgb[2]=0x3a;
+                                }
+
+                                for (int scol = 0; scol < scale; scol++)
+                                        fwrite(rgb, 1, 3, f);
+                        }
+                }
+        }
+
+        fclose(f);
+        printf("generated %s\n", buf);
+}
+
+#define SLEEP_MS(milliseconds)\
+                usleep(milliseconds * 1000);
+
+static int32_t
+step_round()
+{
+        int row, col;
+        int32_t res = 0;
+        static uint32_t counter = 0;
+
+        DOUBLE_FOR(row, pattern->row_length, col, pattern->col_length)
+                die((t_pos2) { row, col });
+
+        print_pattern(counter++);
+        DOUBLE_FOR(row, pattern->row_length, col, pattern->col_length)
+        {
+                t_pos2 pos = {row, col};
+                char c = get_data_from(pos);
+                if (c == 'x')
+                {
+                        set_data_at(pos, '.');
+                        res++;
+                }
+        }
+
+        print_pattern(counter++);
+
+        return (res);
+}
+
 
 
 static struct s_pattern*
@@ -198,52 +331,26 @@ day04 (const char* fp)
 {
         pattern = read_pattern_file(fp);
         set_all_adjacements();
-        for (int x = 0; x < pattern->col_length; x++)
+        int32_t result_part_02 = 0;
+
+        int32_t result;
+        while (1)
         {
-                for (int y = 0; y < pattern->row_length; y++)
-                {
-                        printf("%c", get_data_from((t_pos2)
-                        {
-                                .row = x, .col=y
-                        }));
-                }
-                printf("\n");
+                result = step_round();
+                if (result == 0)
+                        break;
+                printf("Result of step :: %d\n", result);
+                result_part_02 = result_part_02 + result;
         }
 
-        uint32_t final_result = 0;
-        for (int x = 0; x < pattern->col_length; x++)
-        {
-                for (int y = 0; y < pattern->row_length; y++)
-                {
-                        t_pos2 current_pos = (t_pos2)
-                        {
-                                .row = x, .col = y
-                        };
-
-                        if (get_data_from(current_pos) == '@')
-                        {
-                                int32_t adjacent_rolls = get_all_matching_neighbours(current_pos, '@');
-                                printf("%d", adjacent_rolls);
-
-                                if (adjacent_rolls < 4)
-                                {
-                                        final_result++;
-                                }
-                        }
-                        else
-                        {
-                                printf(".");
-                        }
-                }
-                printf("\n");
-        }
-
-
-        printf("\nTotal_Length :: %d\nRow_Length :: %d\nCol_Length %d\n", pattern->total_length, pattern->row_length, pattern->col_length);
-
-        printf("Day 01 : Part 01: %d\n", final_result);
-        free(adjacements);
         free(pattern);
+
+        pattern = read_pattern_file(fp);
+        int32_t result_part_01 = step_round();
+
+        free(pattern);
+        printf("Day 04: Part 01: %d\n", result_part_01);
+        printf("Day 04: Part 02: %d\n", result_part_02);
 }
 
 int
