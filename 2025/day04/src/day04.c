@@ -240,7 +240,6 @@ step_round()
         DOUBLE_FOR(row, pattern->row_length, col, pattern->col_length)
                 die((t_pos2) { row, col });
 
-        print_pattern(counter++);
         DOUBLE_FOR(row, pattern->row_length, col, pattern->col_length)
         {
                 t_pos2 pos = {row, col};
@@ -251,9 +250,6 @@ step_round()
                         res++;
                 }
         }
-
-        print_pattern(counter++);
-
         return (res);
 }
 
@@ -339,7 +335,6 @@ day04 (const char* fp)
                 result = step_round();
                 if (result == 0)
                         break;
-                printf("Result of step :: %d\n", result);
                 result_part_02 = result_part_02 + result;
         }
 
@@ -349,12 +344,6 @@ day04 (const char* fp)
         int32_t result_part_01 = step_round();
 
         free(pattern);
-        printf("Day 04: Part 01: %d\n", result_part_01);
-        printf("Day 04: Part 02: %d\n", result_part_02);
-}
-
-int
-main (void)
-{
-        day04("res/input.txt");
+        printf("Day 04 Part 01: %d\n", result_part_01);
+        printf("Day 04 Part 02: %d\n", result_part_02);
 }

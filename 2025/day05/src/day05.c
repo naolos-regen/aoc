@@ -1,3 +1,4 @@
+#include "../inc/day05.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -277,11 +278,11 @@ parse_to_tree (const char* fp)
 
         }
 
-        uint64_t* ids = x_malloc(sizeof(uint64_t) * bufindex);
+        uint64_t* ids = (uint64_t *) x_malloc(sizeof(uint64_t) * bufindex);
         for (size_t i = 0; i < bufindex; i++)
                 ids[i] = buf[i];
 
-        struct pattern * pattern = x_malloc(sizeof(struct pattern));
+        struct pattern * pattern = (struct pattern*) x_malloc(sizeof(struct pattern));
         pattern->root = i_tree;
         pattern->ids  = ids;
         pattern->ids_len = bufindex;
@@ -321,10 +322,4 @@ day05 (const char* fp)
         printf("Day 05 Part 01: %d\n", part_01);
         printf("Day 05 Part 02: %lu\n", interval_count_unique(pattern->root));
         free_pattern(pattern);
-}
-
-int
-main (void)
-{
-        day05("res/input.txt");
 }
