@@ -5,7 +5,7 @@
 #include <sstream>
 #include <algorithm>
 #include <stdexcept>
-#include "../inc/day02.h"
+#include "day02.h"
 
 using namespace std;
 

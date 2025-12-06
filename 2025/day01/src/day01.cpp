@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include "../inc/day01.h"
+#include "day01.h"
 
 using namespace std;
 #define MAX   100

@@ -1,4 +1,4 @@
-#include "../inc/day06.h"
+#include "day06.h"
 #include <fstream>
 #include <iostream>
 #include <string>

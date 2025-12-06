@@ -1,4 +1,4 @@
-#include "../inc/day04.h"
+#include "day04.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
