@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <cctype>
+#include <algorithm>
 
 using namespace std;
 
@@ -32,6 +33,8 @@ public:
                         this->result = this->result + num;
                         break;
                 case MUL:
+                        if (num == 0)
+                                break;
                         this->result = this->result * num;
                         break;
                 }
@@ -40,6 +43,14 @@ public:
         {
                 os << "Operator: " << static_cast<int>(obj.op) << ", Result: " << obj.result;
                 return os;
+        }
+        Eval * clone() const
+        {
+                return new Eval(this->op, this->result);
+        }
+        Eval * clone_reset() const
+        {
+                return new Eval(this->op);
         }
 };
 
@@ -50,7 +61,7 @@ ignore_line(ifstream & in, ifstream::pos_type &pos)
         return (in.ignore(numeric_limits<streamsize>::max(), '\n'));
 }
 
-static pair<string, ifstream::pos_type>
+static string
 get_last_line(ifstream &in)
 {
         ifstream::pos_type pos = in.tellg();
@@ -64,7 +75,7 @@ get_last_line(ifstream &in)
 
         string line;
         getline(in, line);
-        return make_pair(line, pos);
+        return (line);
 }
 
 static string
@@ -96,7 +107,7 @@ trim_spaces(const string &in)
         return result;
 }
 
-static vector<Eval *> *
+static pair<vector<Eval *> *, vector<Eval *> *> *
 parse_day06_p01(const string &fp)
 {
         vector<Eval *> * evaluators = new vector<Eval *>();
@@ -105,8 +116,8 @@ parse_day06_p01(const string &fp)
         if (!in)
                 return (nullptr);
 
-        pair<string, ifstream::pos_type> last = get_last_line(in);
-        for (const char c : last.first)
+        string last = get_last_line(in);
+        for (const char c : last)
         {
                 if (isspace(c))
                         continue;
@@ -125,7 +136,7 @@ parse_day06_p01(const string &fp)
         string line;
         while (getline(in, line))
         {
-                if (line == last.first)
+                if (line == last)
                         continue;
                 line = trim_spaces(line);
                 uint_fast64_t res = 0;
@@ -153,26 +164,85 @@ parse_day06_p01(const string &fp)
                 }
                 index = 0;
         }
-        return (evaluators);
+
+        vector<Eval *> *evaluators_p1 = new vector<Eval *>();
+        for (Eval *ev : *evaluators)
+        {
+                evaluators_p1->push_back(ev->clone());
+        }
+
+        for (Eval *ev : *evaluators)
+        {
+                ev->result = ev->op == MUL ? 1 : 0;
+        }
+
+        in.clear();
+        in.seekg(0);
+        vector<string> *lines = new vector<string>();
+
+        while (getline(in, line))
+        {
+                if (line == last)
+                        continue;
+                lines->push_back(line);
+        }
+
+        size_t max_len = 0;
+        for (const auto & line : *lines)
+        {
+                max_len = max(max_len, (line.length()));
+        }
+
+        int index = 0;
+        for (int col = 0; col < max_len; ++col)
+        {
+                uint_fast64_t res = 0;
+                for (const auto &line : *lines)
+                {
+                        if (col < line.length())
+                        {
+                                char c = line[col];
+                                if (isdigit(c))
+                                        res = res * 10 + (c - '0');
+                        }
+                }
+                Eval * ev = evaluators->at(index);
+                ev->operate(res);
+                if (res == 0)
+                        index++;
+        }
+
+        vector<Eval *> *evaluators_p2 = new vector<Eval *>();
+        for (Eval *ev : *evaluators)
+        {
+                evaluators_p2->push_back(ev->clone());
+        }
+
+        evaluators->clear();
+        delete lines;
+        delete evaluators;
+        pair<vector<Eval *> *, vector<Eval *> *> * p = new pair<vector<Eval *> *, vector<Eval *> *>(evaluators_p1, evaluators_p2);
+        return (p);
 }
 
-void day06(const char* fp)
+void
+day06(const char* fp)
 {
-        vector<Eval *> * evaluators = parse_day06_p01(fp);
+        pair<vector<Eval *> *, vector<Eval *> *> * evaluators = parse_day06_p01(fp);
         uint_fast64_t result_p01 = 0;
-        for (const Eval * ev : *evaluators)
+        for (const Eval * ev : *evaluators->first)
         {
                 result_p01 = result_p01 + ev->result;
+                delete ev;
         }
-        for (const Eval * ev : *evaluators)
+
+        uint_fast64_t result_p02 = 0;
+        for (const Eval * ev : *evaluators->second)
         {
+                result_p02 = result_p02 + ev->result;
                 delete ev;
         }
         delete evaluators;
-        cout << "Day 06: Part 01: " << result_p01 << endl;
-}
-
-int main(void)
-{
-        day06("res/input.txt");
+        cout << "Day 06 Part 01: " << result_p01 << endl;
+        cout << "Day 06 Part 02: " << result_p02 << endl;
 }

@@ -9,6 +9,7 @@ extern "C" {
 #include "day03/inc/day03.h"
 #include "day04/inc/day04.h"
 #include "day05/inc/day05.h"
+#include "day06/inc/day06.h"
 
 void run_all_days();
 
