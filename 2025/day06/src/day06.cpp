@@ -107,14 +107,14 @@ trim_spaces(const string &in)
         return result;
 }
 
-static pair<vector<Eval *> *, vector<Eval *> *> *
+static pair<vector<Eval>, vector<Eval>> 
 parse_day06_p01(const string &fp)
 {
         vector<Eval *> * evaluators = new vector<Eval *>();
 
         ifstream in(fp);
         if (!in)
-                return (nullptr);
+                exit(1);
 
         string last = get_last_line(in);
         for (const char c : last)
@@ -154,8 +154,7 @@ parse_day06_p01(const string &fp)
                                 {
                                         if (index < evaluators->size())
                                         {
-                                                Eval *ev = evaluators->at(index);
-                                                ev->operate(res);
+                                                evaluators->at(index)->operate(res);
                                         }
                                         res = 0;
                                         index++;
@@ -165,10 +164,11 @@ parse_day06_p01(const string &fp)
                 index = 0;
         }
 
-        vector<Eval *> *evaluators_p1 = new vector<Eval *>();
+        vector<Eval> evaluators_p1;
         for (Eval *ev : *evaluators)
         {
-                evaluators_p1->push_back(ev->clone());
+                Eval e(ev->op, ev->result);
+                evaluators_p1.push_back(e);
         }
 
         for (Eval *ev : *evaluators)
@@ -178,17 +178,17 @@ parse_day06_p01(const string &fp)
 
         in.clear();
         in.seekg(0);
-        vector<string> *lines = new vector<string>();
+        vector<string> lines;
 
         while (getline(in, line))
         {
                 if (line == last)
                         continue;
-                lines->push_back(line);
+                lines.push_back(line);
         }
 
         size_t max_len = 0;
-        for (const auto & line : *lines)
+        for (const auto & line : lines)
         {
                 max_len = max(max_len, (line.length()));
         }
@@ -197,7 +197,7 @@ parse_day06_p01(const string &fp)
         for (int col = 0; col < max_len; ++col)
         {
                 uint_fast64_t res = 0;
-                for (const auto &line : *lines)
+                for (const auto &line : lines)
                 {
                         if (col < line.length())
                         {
@@ -206,43 +206,42 @@ parse_day06_p01(const string &fp)
                                         res = res * 10 + (c - '0');
                         }
                 }
-                Eval * ev = evaluators->at(index);
-                ev->operate(res);
+                evaluators->at(index)->operate(res);
                 if (res == 0)
                         index++;
         }
 
-        vector<Eval *> *evaluators_p2 = new vector<Eval *>();
+        vector<Eval> evaluators_p2;
         for (Eval *ev : *evaluators)
         {
-                evaluators_p2->push_back(ev->clone());
+                Eval e(ev->op, ev->result);
+                evaluators_p2.push_back(e);
+                delete ev;
         }
-
+        
         evaluators->clear();
-        delete lines;
         delete evaluators;
-        pair<vector<Eval *> *, vector<Eval *> *> * p = new pair<vector<Eval *> *, vector<Eval *> *>(evaluators_p1, evaluators_p2);
+        pair<vector<Eval>, vector<Eval>> p{evaluators_p1, evaluators_p2};
+        in.close();
         return (p);
 }
 
 void
 day06(const char* fp)
 {
-        pair<vector<Eval *> *, vector<Eval *> *> * evaluators = parse_day06_p01(fp);
+        auto evaluators = parse_day06_p01(fp);
         uint_fast64_t result_p01 = 0;
-        for (const Eval * ev : *evaluators->first)
+        for (const Eval ev : evaluators.first)
         {
-                result_p01 = result_p01 + ev->result;
-                delete ev;
+                result_p01 = result_p01 + ev.result;
         }
 
         uint_fast64_t result_p02 = 0;
-        for (const Eval * ev : *evaluators->second)
+        for (const Eval ev : evaluators.second)
         {
-                result_p02 = result_p02 + ev->result;
-                delete ev;
+                result_p02 = result_p02 + ev.result;
         }
-        delete evaluators;
+
         cout << "Day 06 Part 01: " << result_p01 << endl;
         cout << "Day 06 Part 02: " << result_p02 << endl;
 }

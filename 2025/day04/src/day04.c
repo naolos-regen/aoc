@@ -338,11 +338,13 @@ day04 (const char* fp)
                 result_part_02 = result_part_02 + result;
         }
 
+        free(pattern->data);
         free(pattern);
 
         pattern = read_pattern_file(fp);
         int32_t result_part_01 = step_round();
 
+        free(pattern->data);
         free(pattern);
         printf("Day 04 Part 01: %d\n", result_part_01);
         printf("Day 04 Part 02: %d\n", result_part_02);
