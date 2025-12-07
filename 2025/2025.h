@@ -10,6 +10,8 @@ extern "C" {
 #include "day04/src/day04.h"
 #include "day05/src/day05.h"
 #include "day06/src/day06.h"
+#include "day07/src/day07.h"
+
 
 void run_all_days();
 

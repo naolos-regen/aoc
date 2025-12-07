@@ -1,5 +1,5 @@
 CXX 		:= g++
-CXXFLAGS 	:= -Wall -Wextra -Iinc -fPIC
+CXXFLAGS 	:= -Wall -Wextra -Isrc -fPIC
 
 SRC 		:= src/day01.cpp
 OBJ_DIR 	:= obj

@@ -8,4 +8,5 @@ void run_all_days()
         day04("2025/day04/res/input.txt");
         day05("2025/day05/res/input.txt");
         day06("2025/day06/res/input.txt");
+        day07("2025/day07/res/input.txt");
 }
