@@ -346,6 +346,7 @@ day04 (const char* fp)
 
         free(pattern->data);
         free(pattern);
+        free(adjacements);
         printf("Day 04 Part 01: %d\n", result_part_01);
         printf("Day 04 Part 02: %d\n", result_part_02);
 }
