@@ -111,7 +111,6 @@ read_file_to_single_line(const std::string& filename)
 extern "C" void 
 day01(const char *fp)
 {
-        cout << "hello\n";
         try
         {
                 vector<string> file_content = read_file_to_single_line(fp);
