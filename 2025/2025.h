@@ -12,7 +12,7 @@ extern "C" {
 #include "day06/src/day06.h"
 #include "day07/src/day07.h"
 #include "day08/src/day08.h"
-
+#include "day09/src/day09.h"
 
 void run_all_days();
 
