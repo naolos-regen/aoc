@@ -5,12 +5,12 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <algorithm>
 #include <thread>
 #include <mutex>
 #include <atomic>
 #include <queue>
 #include <set>
-#include <algorithm>
 
 using namespace std;
 
@@ -44,15 +44,19 @@ uint64_t counter = 0;
 class Machine
 {
 private:
-        light_diagram   target_ld;
-        button_wiring   bw;
+        light_diagram           target_ld;
+        button_wiring           bw;
+        joltage_requirements    target_joltage;
 
         uint32_t solve_min_presses_recursive(light_diagram current, button_wiring & best_path, size_t depth);
         uint32_t solve_min_presses_bfs();
+        uint32_t solve_min_joltage_presses();
         light_diagram parse_light_diagram(string & line);
         button_wiring parse_button_wiring(vector<string> & lines);
+        joltage_requirements parse_joltage_requirements(const string & line);
 public:
-        uint32_t res = 0;
+        uint32_t light_res = 0;
+        uint32_t joltage_res = 0;
 
         explicit Machine(const string & line)
         {
@@ -60,7 +64,40 @@ public:
         };
 
         void parse(const string & line);
-        void solve_min_presses();
+        void min_light_presses();
+        void min_joltage_presses();
+};
+
+joltage_requirements
+Machine::parse_joltage_requirements(const string & line)
+{
+        joltage_requirements jr;
+        
+        string cleaned_line = line;
+
+        if (!cleaned_line.empty() && cleaned_line[0] == '{')
+                cleaned_line = cleaned_line.substr(1);
+
+        if (!cleaned_line.empty() && cleaned_line.back() == '}')
+                cleaned_line.pop_back();
+
+        stringstream ss(cleaned_line);
+        string token;
+        while (getline(ss, token, ','))
+        {
+                try
+                {
+                        token.erase(remove_if(token.begin(), token.end(), ::isspace), token.end());
+                        if (!token.empty())
+                                jr.push_back(std::stoul(token));
+                }
+                catch (const exception & e)
+                {
+                        cerr << "Error parsing joltage_requirements: " << token << endl;
+                };
+        };
+
+        return (jr);
 };
 
 light_diagram
@@ -147,13 +184,64 @@ Machine::parse_button_wiring(vector<string> & lines)
 };
 
 uint32_t
+Machine::solve_min_joltage_presses()
+{
+        joltage_requirements initial(target_joltage.size(), 0);
+
+        queue<pair<joltage_requirements, uint32_t>> states;
+        set<joltage_requirements> visited;
+        
+        states.push({initial, 0});
+        visited.insert(initial);
+
+        constexpr int MAX_ITERATIONS = 100000;
+        int iterations = 0;
+
+        while (!states.empty() && iterations++ < MAX_ITERATIONS)
+        {
+                auto [cj, cp] = states.front();
+                states.pop();
+
+                if (cj == this->target_joltage)
+                        return cp;
+
+                for (const auto & b : bw)
+                {
+                        joltage_requirements next = cj;
+                        
+                        for (size_t idx : b)
+                                if (idx < target_joltage.size())
+                                        next[idx]++;
+
+                        bool valid = true;
+                        for (size_t i = 0; i < target_joltage.size(); ++i)
+                        {
+                                if (next[i] > target_joltage[i])
+                                {
+                                        valid = false;
+                                        break;
+                                };
+                        };
+
+                        if (!valid)
+                                continue;
+
+                        if (visited.insert(next).second)
+                                states.push({next, cp + 1});
+                };
+        };
+
+        return UINT32_MAX;
+};
+
+uint32_t
 Machine::solve_min_presses_bfs()
 {
         light_diagram initial(target_ld.size(), false);
 
-        std::queue<pair<light_diagram, uint32_t>> states;
+        queue<pair<light_diagram, uint32_t>> states;
 
-        std::set<light_diagram> visited;
+        set<light_diagram> visited;
 
         states.push({initial, 0});
         visited.insert(initial);
@@ -240,59 +328,81 @@ Machine::parse(const string & line)
         if (splitted.size() < 3)
                 return;
 
-        target_ld = parse_light_diagram(splitted[0]);
+        this->target_ld = parse_light_diagram(splitted[0]);
+
         vector<string> bws(splitted.begin() + 1, splitted.end() - 1);
-        bw = parse_button_wiring(bws);
+        this->bw = parse_button_wiring(bws);
+
+        this->target_joltage = parse_joltage_requirements(splitted[splitted.size() - 1]);
 };
 
 void
-Machine::solve_min_presses()
+Machine::min_light_presses()
 {
-        res = solve_min_presses_bfs();
+        this->light_res = solve_min_presses_bfs();
 };
+
+void
+Machine::min_joltage_presses()
+{
+        this->joltage_res = solve_min_joltage_presses();
+};
+
 
 class MachineCollection
 {
 private:
         vector<Machine> machines;
-        atomic<uint32_t> total_result{0};
+        atomic<uint32_t> total_light_result{0};
+        atomic<uint32_t> total_joltage_result{0};
         mutex output_mutex;
 public:
         void load(const vector<string> & lines);
-        uint32_t total_threaded();
+        pair<uint32_t, uint32_t> total_threaded(int num_threads);
 
 };
 
 
 
-uint32_t
-MachineCollection::total_threaded()
+pair<uint32_t, uint32_t>
+MachineCollection::total_threaded(int num_threads = thread::hardware_concurrency())
 {
-        vector<thread> threads;
+        num_threads = num_threads > 0 ? num_threads : 4;
 
-        total_result = 0;
+        total_light_result = 0;
+        total_joltage_result = 0;
 
-        for (Machine & machine : machines)
         {
-                threads.emplace_back([this, &machine]()
+                vector<thread> light_threads;
+
+                for (Machine & machine : this->machines)
                 {
-                        machine.solve_min_presses();
-                        total_result.fetch_add(machine.res, std::memory_order_relaxed);
+                        light_threads.emplace_back([this, &machine]() 
+                                        {
+                                                machine.min_light_presses();
+                                                total_light_result.fetch_add(machine.light_res, std::memory_order_relaxed);
+                                        });
+                };
 
-                        {
-                                lock_guard<mutex> lock(this->output_mutex);
-                        }
-
-                });
-
-        };
-
-        for (auto & thread : threads)
+                for (auto & thread : light_threads)
+                        thread.join();
+        }
         {
-                thread.join();
-        };
+                vector<thread> joltage_threads;
 
-        return total_result.load(std::memory_order_relaxed);
+                for (Machine & machine : this->machines)
+                {
+                        joltage_threads.emplace_back([this, &machine]()
+                                        {
+                                                machine.min_joltage_presses();
+                                                total_joltage_result.fetch_add(machine.joltage_res, std::memory_order_relaxed);
+                                        });
+                };
+
+                for (auto & thread : joltage_threads)
+                        thread.join();
+        }
+        return { total_light_result.load(memory_order_relaxed), total_joltage_result.load(memory_order_relaxed) };
 };
 
 void
@@ -331,9 +441,10 @@ day10(const char* fp)
 
         collect.load(lines);
 
-        uint32_t result = collect.total_threaded();
+        pair<uint32_t, uint32_t> result = collect.total_threaded();
 
-        cout << "Day 10 Part 01: " << result << endl;
+        cout << "Day 10 Part 01: " << result.first << endl;
+        cout << "Day 10 Part 02: " << result.second << endl;
 };
 
 int main(void)
