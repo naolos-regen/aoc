@@ -5,9 +5,12 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <algorithm>
+#include <thread>
+#include <mutex>
+#include <atomic>
 #include <queue>
 #include <set>
+#include <algorithm>
 
 using namespace std;
 
@@ -22,12 +25,18 @@ using joltage_requirements = vector<uint32_t>;
 static vector<string>
 split (const string & str, char c)
 {
-        stringstream ss(str);
-        vector<string> res;
+        vector<string> tokens;
         string token;
-        while (getline(ss, token, c))
-                res.emplace_back(token);
-        return (res);
+        istringstream tokenStream(str);
+
+        while (getline(tokenStream, token, c))
+        {
+                if (!token.empty())
+                {
+                        tokens.push_back(token);
+                };
+        };
+        return (tokens);
 };
 
 uint64_t counter = 0;
@@ -35,157 +44,51 @@ uint64_t counter = 0;
 class Machine
 {
 private:
-        light_diagram           immutable_ld;
-        light_diagram           mutable_ld;
+        light_diagram   target_ld;
+        button_wiring   bw;
 
-        button_wiring           bw;
-        joltage_requirements    jr;
-
-        light_diagram           parse_light_diagram             (string & line);
-        button_wiring           parse_button_wiring             (vector<string> & line);
-        joltage_requirements    parse_joltage_requirements      (string & line);
+        uint32_t solve_min_presses_recursive(light_diagram current, button_wiring & best_path, size_t depth);
+        uint32_t solve_min_presses_bfs();
+        light_diagram parse_light_diagram(string & line);
+        button_wiring parse_button_wiring(vector<string> & lines);
 public:
-        uint32_t                res = 0;
-        Machine() = default;
+        uint32_t res = 0;
 
         explicit Machine(const string & line)
         {
                 this->parse(line);
-                cout << "Parsing " << counter++ << "\n";
-                this->mutable_ld = immutable_ld;
         };
 
         void parse(const string & line);
-        void toggle(buttons & bw);
         void solve_min_presses();
-        static bool is_all_off(light_diagram ld);
-        button_wiring shortest();
 };
 
-
-class MachineCollection
+light_diagram
+Machine::parse_light_diagram(string & line)
 {
-private:
-        vector<Machine> machines;
-public:
-        MachineCollection() = default;
+        light_diagram ld;
 
-        void load(const vector<string> & lines);
+        if (!line.empty() && line[0] == '[')
+                line = line.substr(1);
+        if (!line.empty() && line.back() == ']')
+                line.pop_back();
 
-        uint32_t total();
-};
-
-uint32_t
-MachineCollection::total()
-{
-        uint32_t res = 0;
-
-        for (const Machine & m : this->machines)
+        for (char c : line)
         {
-                res = res + m.res;
-        };
-
-        return (res);
-};
-
-void
-MachineCollection::load(const vector<string> & lines)
-{
-        for (const auto & l : lines)
-        {
-                Machine t(l);
-                t.solve_min_presses();
-                this->machines.emplace_back(t);
-        };
-};
-
-void
-Machine::solve_min_presses() 
-{
-        this->res = static_cast<uint32_t>(this->shortest().size());
-};
-
-bool
-Machine::is_all_off(light_diagram ld)
-{
-        return std::none_of
-        (
-/*Begin Iter*/ ld.begin(),
-/*End   Iter*/ ld.end(),
-/*Lambda Exp*/ [](const bool x) { return (x); }
-        );
-
-};
-
-uint64_t iterating = 0;
-
-button_wiring
-Machine::shortest()
-{
-        queue<pair<light_diagram, button_wiring>> queue;
-        set<light_diagram>                        visited;
-
-        queue.push({this->mutable_ld, {}});
-
-        while (!queue.empty())
-        {
-                auto [cl, cp] = queue.front();
-                queue.pop();
-
-                if (Machine::is_all_off(cl))
+                switch (c)
                 {
-                        cout << "Done " << cp.size() << "\n";
-                        return {cp};
-                };
-                for (const auto & b : this->bw)
-                {
-                        light_diagram nl = cl;
-
-                        for (size_t idx : b)
-                                nl[idx] = !nl[idx];
-
-                        if (visited.find(nl) == visited.end())
-                        {
-                                button_wiring np = cp;
-                                np.emplace_back(b);
-                                queue.push({nl, np});
-
-                        };
-                };
-
-        };
-
-        return {};
-};
-
-void
-Machine::parse(const string & line)
-{
-        vector<string> splitted = split (line, ' ');
-        vector<string> bws(splitted.begin() + 1, splitted.begin() + splitted.size() - 1);
-
-        this->immutable_ld      = this->parse_light_diagram        (splitted[0]);
-        this->bw                = this->parse_button_wiring        (bws);
-        this->jr                = this->parse_joltage_requirements (splitted[splitted.size() - 1]);
-};
-
-joltage_requirements
-Machine::parse_joltage_requirements (string & line)
-{
-        joltage_requirements jr;
-
-        uint32_t num = 0;
-        for (const char & c : line)
-        {
-                if (std::isdigit(c))
-                        num = num * 10 + (c - '0');
-                if (c == ',' || c == '}')
-                {
-                        jr.emplace_back(num);
-                        num = 0;
+                case '.' :
+                        ld.emplace_back(false);
+                        break;
+                case '#' :
+                        ld.emplace_back(true);
+                        break;
+                default:
+                        break;
                 };
         };
-        return (jr);
+
+        return (ld);
 };
 
 button_wiring
@@ -193,55 +96,216 @@ Machine::parse_button_wiring(vector<string> & lines)
 {
         button_wiring bw;
 
-        for (const auto & line : lines)
+        for (string & line : lines)
         {
-                buttons b{};
-                uint32_t curr = 0;
+                if (!line.empty() && line[0] == '(')
+                        line = line.substr(1);
+                if (!line.empty() && line.back() == ')')
+                        line.pop_back();
 
-                for (const char & c : line)
+                buttons b;
+                string curr_num;
+
+                for (char c : line)
                 {
                         if (std::isdigit(c))
-                                curr = curr * 10 + (c - '0');
-                        else if (c == ',' || c == ')')
+                                curr_num += c;
+                        else if (c == ',' || curr_num.empty() == false)
                         {
-                                b.emplace_back(curr);
-                                curr = 0;
-                        }
+                                if (!curr_num.empty())
+                                {
+                                        try
+                                        {
+                                                b.emplace_back(std::stoul(curr_num));
+                                                curr_num.clear();
+                                        }
+                                        catch (const exception & e)
+                                        {
+                                                cerr << "Error parsing button: " << curr_num << endl;
+                                        };
+                                };
+                        };
                 };
-                bw.emplace_back(b);
+                if (!curr_num.empty())
+                {
+                        try
+                        {
+                                b.emplace_back(std::stoul(curr_num));
+                        }
+                        catch (const exception & e)
+                        {
+                                cerr << "Error parsing button: " << curr_num << endl;
+                        };
+                };
+                if (!b.empty())
+                {
+                        bw.emplace_back(b);
+                };
         };
+
         return (bw);
 };
 
-light_diagram
-Machine::parse_light_diagram(string & line)
+uint32_t
+Machine::solve_min_presses_bfs()
 {
-        light_diagram ld;
-                
-        for (const char & c : line)
+        light_diagram initial(target_ld.size(), false);
+
+        std::queue<pair<light_diagram, uint32_t>> states;
+
+        std::set<light_diagram> visited;
+
+        states.push({initial, 0});
+        visited.insert(initial);
+
+        const int MAX_ITERATIONS = 100000;
+        int iterations = 0;
+
+        while (!states.empty() && iterations++ < MAX_ITERATIONS)
         {
-                switch (c)
+                auto [cl, cp] = states.front();
+                states.pop();
+
+                if (cl == target_ld)
                 {
-                        case '.': ld.emplace_back(false); break;
-                        case '#': ld.emplace_back(true);  break;
-                        default : continue;
+                        return cp;
+                }
+
+                for (const auto & b : bw)
+                {
+                        light_diagram nl = cl;
+
+                        for (size_t idx : b)
+                        {
+                                if (idx < nl.size())
+                                {
+                                        nl[idx] = !nl[idx];
+                                }
+                        }
+
+                        if (visited.find(nl) == visited.end())
+                        {
+                                states.push({nl, cp + 1});
+                                visited.insert(nl);
+                        }
+                }
+        }
+        return UINT32_MAX;
+};
+
+uint32_t
+Machine::solve_min_presses_recursive(light_diagram current, button_wiring & best_path, size_t depth)
+{
+        if (current == this->target_ld)
+                return (0);
+
+        if (depth > 10)
+                return UINT32_MAX;
+
+        uint32_t min_presses = UINT32_MAX;
+        button_wiring best_local_path;
+
+        for (const auto & button : bw)
+        {
+                light_diagram next = current;
+
+                for (size_t idx : button)
+                {
+                        if (idx < next.size())
+                                next[idx] = !next[idx];
+                };
+
+                uint32_t sub_process = solve_min_presses_recursive(next, best_local_path, depth + 1);
+
+                if (sub_process != UINT32_MAX)
+                {
+                        uint32_t total_presses = sub_process + 1;
+                        if (total_presses < min_presses)
+                        {
+                                min_presses = total_presses;
+                                best_path = best_local_path;
+                                best_path.insert(best_path.begin(), button);
+                        };
                 };
         };
 
-        return (ld);
+        return min_presses;
 };
 
-
-void 
-Machine::toggle(buttons & bw)
+void
+Machine::parse(const string & line)
 {
-        light_diagram tmp(this->mutable_ld.size(), false);
-        for (const auto & n : bw)
-                tmp[n] = true;
-        for (size_t i = 0; i < this->mutable_ld.size(); ++i)
-                mutable_ld[i] = mutable_ld[i] ^ tmp[i];
+        vector<string> splitted = split(line, ' ');
+
+        if (splitted.size() < 3)
+                return;
+
+        target_ld = parse_light_diagram(splitted[0]);
+        vector<string> bws(splitted.begin() + 1, splitted.end() - 1);
+        bw = parse_button_wiring(bws);
+};
+
+void
+Machine::solve_min_presses()
+{
+        res = solve_min_presses_bfs();
+};
+
+class MachineCollection
+{
+private:
+        vector<Machine> machines;
+        atomic<uint32_t> total_result{0};
+        mutex output_mutex;
+public:
+        void load(const vector<string> & lines);
+        uint32_t total_threaded();
 
 };
+
+
+
+uint32_t
+MachineCollection::total_threaded()
+{
+        vector<thread> threads;
+
+        total_result = 0;
+
+        for (Machine & machine : machines)
+        {
+                threads.emplace_back([this, &machine]()
+                {
+                        machine.solve_min_presses();
+                        total_result.fetch_add(machine.res, std::memory_order_relaxed);
+
+                        {
+                                lock_guard<mutex> lock(this->output_mutex);
+                        }
+
+                });
+
+        };
+
+        for (auto & thread : threads)
+        {
+                thread.join();
+        };
+
+        return total_result.load(std::memory_order_relaxed);
+};
+
+void
+MachineCollection::load(const vector<string> & lines)
+{
+        this->machines.reserve(lines.size());
+
+        for (const auto & l : lines)
+        {
+                this->machines.emplace_back(Machine(l));
+        };
+};
+
 
 static bool
 read_file (const string & fp, vector<string> & lines)
@@ -252,21 +316,22 @@ read_file (const string & fp, vector<string> & lines)
         string line;
         while (getline(in, line))
                 lines.emplace_back(line);
+        in.close();
         return (true);
 };
 
-extern "C" void 
+extern "C" void
 day10(const char* fp)
 {
         vector<string> lines;
         if (!read_file(fp, lines))
                 exit(1);
-        
+
         MachineCollection collect{};
 
         collect.load(lines);
 
-        uint32_t result = collect.total();
+        uint32_t result = collect.total_threaded();
 
         cout << "Day 10 Part 01: " << result << endl;
 };
