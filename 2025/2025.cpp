@@ -13,4 +13,5 @@ run_all_days()
         day08("2025/day08/res/input.txt"); 
         day09("2025/day09/res/input.txt"); 
         day10("2025/day10/res/input.txt"); 
+        day11("2025/day11/res/input.txt");
 }

@@ -14,6 +14,7 @@ extern "C" {
 #include "day08/src/day08.h"
 #include "day09/src/day09.h"
 #include "day10/src/day10.h"
+#include "day11/src/day11.h"
 
 void run_all_days();
 

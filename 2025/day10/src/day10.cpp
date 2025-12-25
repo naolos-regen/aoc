@@ -387,21 +387,6 @@ MachineCollection::total_threaded(int num_threads = thread::hardware_concurrency
                 for (auto & thread : light_threads)
                         thread.join();
         }
-        {
-                vector<thread> joltage_threads;
-
-                for (Machine & machine : this->machines)
-                {
-                        joltage_threads.emplace_back([this, &machine]()
-                                        {
-                                                machine.min_joltage_presses();
-                                                total_joltage_result.fetch_add(machine.joltage_res, std::memory_order_relaxed);
-                                        });
-                };
-
-                for (auto & thread : joltage_threads)
-                        thread.join();
-        }
         return { total_light_result.load(memory_order_relaxed), total_joltage_result.load(memory_order_relaxed) };
 };
 
@@ -446,9 +431,3 @@ day10(const char* fp)
         cout << "Day 10 Part 01: " << result.first << endl;
         cout << "Day 10 Part 02: " << result.second << endl;
 };
-
-int main(void)
-{
-        day10("res/input.txt");
-        return (0);
-}
